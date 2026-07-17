@@ -86,9 +86,14 @@ function App() {
   const [phone, setPhone] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
-  const [authUser, setAuthUser] = useState(getStoredUser())
-  const [loginForm, setLoginForm] = useState({ username: '', password: '' })
-  const [authLoading, setAuthLoading] = useState(false)
+  const [authUser, setAuthUser] = useState({
+    id: 0,
+    username: 'Guest',
+    is_admin: true,
+    is_staff: false,
+    is_superuser: false,
+  })
+
 
   async function loadData() {
     try {
@@ -113,31 +118,11 @@ function App() {
   }
 
   useEffect(() => {
-    if (!authUser) {
-      setLoading(false)
-      return
-    }
-
     loadData()
-  }, [authUser])
+  }, [])
 
-  async function handleLogin(event) {
-    event.preventDefault()
-    setAuthLoading(true)
-    try {
-      const user = await request('/auth/login/', {
-        method: 'POST',
-        body: JSON.stringify(loginForm),
-      })
-      localStorage.setItem('authUser', JSON.stringify(user))
-      setAuthUser(user)
-      setMessage('')
-    } catch (error) {
-      setMessage(error.message)
-    } finally {
-      setAuthLoading(false)
-    }
-  }
+
+
 
   async function handleLogout() {
     try {
@@ -151,24 +136,7 @@ function App() {
     }
   }
 
-  useEffect(() => {
-    async function loadCurrentUser() {
-      try {
-        const user = await request('/auth/me/')
-        if (user?.username) {
-          localStorage.setItem('authUser', JSON.stringify(user))
-          setAuthUser(user)
-        }
-      } catch {
-        localStorage.removeItem('authUser')
-        setAuthUser(null)
-      }
-    }
 
-    if (getStoredUser()) {
-      loadCurrentUser()
-    }
-  }, [])
 
   useEffect(() => {
     if (authUser && authUser.is_admin) {
@@ -312,24 +280,44 @@ function App() {
     ? repayments.filter((item) => userLoans.some((loan) => loan.id === item.loanId))
     : []
 
-  if (!authUser) {
-    return (
-      <div className="app auth-page">
-        <div className="auth-card">
-          <h1>Mobile Savings & Loan System</h1>
-          <p>Login as admin or member.</p>
-          {message && <p className="message">{message}</p>}
-          <form className="auth-form" onSubmit={handleLogin}>
-            <input name="username" onChange={updateLoginForm} placeholder="Username" value={loginForm.username} />
-            <input name="password" onChange={updateLoginForm} placeholder="Password" type="password" value={loginForm.password} />
-            <button disabled={authLoading} type="submit">{authLoading ? 'Logging in...' : 'Login'}</button>
-          </form>
-        </div>
-      </div>
-    )
-  }
+  const [mobileSummary, setMobileSummary] = useState(null)
+  const [mobileError, setMobileError] = useState('')
+
+  useEffect(() => {
+    let ignore = false
+
+    async function fetchSummary() {
+      const p = phone.trim()
+      if (!p) {
+        setMobileSummary(null)
+        setMobileError('')
+        return
+      }
+
+      try {
+        setMobileError('')
+        const summary = await request('/auth/member_summary/', {
+          method: 'POST',
+          body: JSON.stringify({ phone: p }),
+        })
+        if (!ignore) setMobileSummary(summary)
+      } catch (e) {
+        if (!ignore) {
+          setMobileSummary(null)
+          setMobileError(e.message)
+        }
+      }
+    }
+
+    fetchSummary()
+    return () => {
+      ignore = true
+    }
+  }, [phone])
+
 
   return (
+
     <div className="app">
       <header className="site-header">
         <div className="header-top">
@@ -489,24 +477,27 @@ function App() {
             <input onChange={(event) => setPhone(event.target.value)} placeholder="Phone number" value={phone} />
           </section>
 
-          {selectedUser ? (
+          {mobileError && <p className="message">{mobileError}</p>}
+
+          {mobileSummary ? (
             <section className="phone-box">
-              <h3>{selectedUser.full_name}</h3>
-              <p>Phone: {selectedUser.phone}</p>
+              <h3>{mobileSummary.member.full_name}</h3>
+              <p>Phone: {mobileSummary.member.phone}</p>
               <div className="cards">
-                <div className="card"><span>Savings</span><b>{money(userSavings.reduce((sum, item) => sum + Number(item.amount), 0))}</b></div>
-                <div className="card"><span>Loans</span><b>{money(userLoans.reduce((sum, item) => sum + Number(item.amount), 0))}</b></div>
-                <div className="card"><span>Paid</span><b>{money(userRepayments.reduce((sum, item) => sum + Number(item.amount_paid), 0))}</b></div>
+                <div className="card"><span>Savings</span><b>{money(mobileSummary.savings.reduce((sum, item) => sum + Number(item.amount), 0))}</b></div>
+                <div className="card"><span>Loans</span><b>{money(mobileSummary.loans.reduce((sum, item) => sum + Number(item.amount), 0))}</b></div>
+                <div className="card"><span>Paid</span><b>{money(mobileSummary.repayments.reduce((sum, item) => sum + Number(item.amount_paid), 0))}</b></div>
               </div>
               <h3>My loans</h3>
               <SimpleTable
                 columns={['Amount', 'Status', 'Date']}
-                rows={userLoans.map((loan) => [money(loan.amount), loan.status, loan.application_date])}
+                rows={mobileSummary.loans.map((loan) => [money(loan.amount), loan.status, loan.application_date])}
               />
             </section>
           ) : (
             <p className="empty">No member found.</p>
           )}
+
         </main>
       )}
     </div>

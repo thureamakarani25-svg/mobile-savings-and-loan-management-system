@@ -8,7 +8,9 @@ from .api_views import (
     current_user,
     login_api,
     logout_api,
+    member_summary_api,
 )
+
 
 router = DefaultRouter()
 
@@ -21,4 +23,5 @@ urlpatterns = router.urls + [
     path('auth/me/', current_user, name='auth_me'),
     path('auth/login/', login_api, name='auth_login'),
     path('auth/logout/', logout_api, name='auth_logout'),
+    path('auth/member_summary/', member_summary_api, name='member_summary'),
 ]
