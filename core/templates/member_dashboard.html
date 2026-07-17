@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Member Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f4f6;
+            margin: 0;
+            padding: 24px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+            padding: 24px;
+            max-width: 700px;
+        }
+
+        a {
+            color: #2563eb;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>Member Dashboard</h1>
+        <p>Welcome, {{ user.username }}.</p>
+        <p>This area is for members.</p>
+        <p><a href="{% url 'logout' %}">Logout</a></p>
+    </div>
+</body>
+
+</html>
